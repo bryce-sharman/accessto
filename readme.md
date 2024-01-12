@@ -42,19 +42,36 @@ conda create \
 
 In the Miniconda3 prompt, type:
 ```console 
-conda activate r5py
+(r5py) [local directory]> conda activate r5py
 ```
 
 ### 5. Install JupyterLab to this environment. 
+In the Miniconda3 prompt, type:
+```console
+(r5py) [local directory]> conda install --channel conda-forge jupyterlab
+```
+
+### Install accessto to this environment
+
+Download the code from this release and store in a convenient location.
 
 ```console
-conda install --channel conda-forge jupyterlab
+(r5py) [local directory]> pip install -e [path to the root folder of this library]
+```
+Note that the root folder of the library contains the file *setup.py*.
+
+To update this package, replace the previous command with the following:
+```console
+(r5py) [local directory]> pip install -e [path to the root folder of this library] --upgrade
 ```
 
 ### 6. Download OpenTripPlanner JAR file
 
 *OpenTripPlanner* is distributed as a single stand-alone runnable JAR file. OTP v2.4.0 can be downloaded from their GitHub repository.
 https://github.com/opentripplanner/OpenTripPlanner/releases
+
+Download the 'shaded jar' file, *e.g.* **otp-2.4.0-shaded.jar**.
+
 
 
 ### 6. Install Java
@@ -86,3 +103,5 @@ https://learn.microsoft.com/en-us/java/openjdk/download#openjdk-11
         ```
 
 Several example scripts are included in the `example_notebooks` folder of this library package to help you get started.
+
+Please also see the [**wiki**](https://github.com/bryce-sharman/accessto/wiki) for this project for more detailed documentation and usage guides.
