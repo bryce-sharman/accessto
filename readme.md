@@ -51,14 +51,14 @@ In the Miniconda3 prompt, type:
 (r5py) [local directory]> conda install --channel conda-forge jupyterlab
 ```
 
-### Install accessto to this environment
+### Install **accessto** to this environment
 
 Download the code from this release and store in a convenient location.
 
 ```console
 (r5py) [local directory]> pip install -e [path to the root folder of this library]
 ```
-Note that the root folder of the library contains the file *setup.py*.
+Note that the root folder of the library contains the *pyproject.toml* file.
 
 To update this package, replace the previous command with the following:
 ```console
@@ -78,28 +78,29 @@ Download the 'shaded jar' file, *e.g.* **otp-2.4.0-shaded.jar**.
 
 Both *OpenTripPlanner* and *r5* use Java. If the system Java is too old, then you will to install a new JDK.
 
-This library has been tested using JDK 11.
-https://learn.microsoft.com/en-us/java/openjdk/download#openjdk-11
+OpenTripPlanner version 2.4, requires JDK 17. The following JDK was used during development and testing of 
+this library.
+
+https://learn.microsoft.com/en-us/java/openjdk/download#openjdk-17
 
 > **_NOTE:_** JDK installation requires admin priviledges. City of Toronto staff will need to contact IT to install this package. 
+
+
 
 ## Running accessto
 
 *accessto* is designed to be run from a Jupyter notebook. To open the notebook, perform the following steps:
 
 1. From the Windows Start Menu, open *Anaconda Prompt (Miniconda3)
-    2. Activate the `r5py` library by typing the following in the Miniconda prompt window
+2. Activate the `r5py` library by typing the following in the Miniconda prompt window
     ```console 
-    conda activate r5py
+    (r5py) [local directory]> conda activate r5py
     ```
-3. Open a Jupyter Lab file
+3. Open a Jupyter Lab file, then open Jupyter lab
     - first change directory to where your notebooks are stored
         ```console 
-        cd [notebook location] 
-        ```
-    - now open Jupyter Lab
-        ```console 
-        jupyter lab
+        (r5py) [local directory]> cd [notebook location] 
+        (r5py) [notebook location]> jupyter lab
         ```
 
 Several example scripts are included in the `example_notebooks` folder of this library package to help you get started.
