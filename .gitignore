@@ -10,9 +10,6 @@ src/accessto/__pycache__/
 src/accessto/travel_costs/__pycache__/
 
 
-# For now, remove this when ready
-example_notebooks/
-
 # This is an interim file storing snippets for various parts of the documentation. 
 # Don't save this. Remove this line when initial version complete.
 documentation_snippets.md
