@@ -19,17 +19,19 @@ class TestAccessOpportunities(unittest.TestCase):
         )
 
     @staticmethod
-    def _test_matrix(test_matrix, ref_matrix, name=None):
+    def _test_matrix(test_matrix, ref_matrix, check_name=False):
         """ Test matrix helping function that checks two matrices. Raises Assertion error if test fails."""
         tm.assert_frame_equal(
                 left=test_matrix.matrix, 
                 right=ref_matrix.matrix,
                 check_dtype=False,
                 check_names=False,
-                check_exact=False
+                check_exact=False,
+                check_index_type="equiv"
         )
-        if name and test_matrix.name != name:
-            raise AssertionError("Names do not match.")
+        if check_name:
+            if test_matrix.name != ref_matrix.name:
+                raise AssertionError(f"Names do not match: {test_matrix.name}, {ref_matrix.name}")
 
     def test_impedance_within_threshold_3(self):
         """ Tests for within threshold impedance function with threshold of 3. This should be 0 everywhere. """

@@ -95,7 +95,8 @@ class Matrix():
         The data is expected to be a two-dimensional array wile the origins and destinations are one-dimension arrays, corresponding 
         is size to the input `data`
     name=: str, Optional
-        matrix name, defaults to "matrix"
+        matrix name, defaults to "matrix". 
+        This is not used if creating from another matrix, as that name is copied over as well.
 
     Attributes
     ----------
@@ -121,6 +122,7 @@ class Matrix():
             if not isinstance(matrix, Matrix):
                 raise AttributeError("`matrix` parameter must be of type Matrix.")
             self._matrix = matrix.matrix.copy()
+            self._name = matrix.name
         elif df is not None:
             # Set from pandas DataFrame
             if data is not None or origins is not None or destinations is not None:
@@ -129,6 +131,7 @@ class Matrix():
                 raise AttributeError("`df` parameter must be a pandas DataFrame.")
             self._test_matrix(df)
             self._matrix = df
+            self._name = name
         elif data is not None:
             # From separate data, origins and destinations
             if origins is None or destinations is None:
@@ -136,10 +139,14 @@ class Matrix():
             test_df = pd.DataFrame(data=data, index=origins, columns=destinations)
             self._test_matrix(test_df)
             self._matrix = test_df
+            self._name = name
         else:
             # create an empty matrix, probably to read data from a file later
             self._matrix = None
-        self._name = name
+            self._name = name
+
+        self._matrix.index = self._matrix.index.astype(np.int64)
+        self._matrix.columns = self._matrix.columns.astype(np.int64)
 
     def __eq__(self, matrix):
         """ Return True if the matrices are the same (allow the names to differ). """
