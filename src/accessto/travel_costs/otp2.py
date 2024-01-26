@@ -384,7 +384,7 @@ class OTP2():
         
         """
         # Make sure that no time_str argument is included in the kwargs, this needs to be overwritten.
-        if ['time_str'] in kwargs.keys():
+        if 'time_str' in kwargs.keys():
             del kwargs['time_str']
 
         trip_time_str = start_time_str
@@ -409,44 +409,7 @@ class OTP2():
             sum_dict[k] = v / n_runs
         return sum_dict
 
-    @staticmethod
-    def _create_numerical_datetime(date_str, time_str):
-        year, month, day = date_str.split('-')
-        hour, min = time_str.split(':', maxsplit=1)
-        dt = datetime(int(year), int(month), int(day), int(hour), int(min))
-        return dt.timestamp()
-
-    @staticmethod
-    def _calc_num_intervals(time_intervals: list[dict]) -> int:
-        return len(time_intervals)
-
-    def _calc_num_timesteps(self, time_intervals: list[dict]) -> int:
-        def _calc_num_timesteps_in_interval(st_hr, st_min, end_hr, end_min, step):
-            st_int = 60 * st_hr + st_min
-            end_int = 60 * end_hr + end_min - 1    # adding -1 as exclusive of end time
-            return 1 + ((end_int - st_int) // step)
-
-        total_timesteps = 0
-        for ti in time_intervals:
-            st_hr, st_min = [int(x) for x in ti['start'].split(":")]
-            end_hr, end_min = [int(x) for x in ti['end'].split(":")]
-            total_timesteps += _calc_num_timesteps_in_interval(st_hr, st_min, end_hr, end_min, ti['step_mins'])
-        return total_timesteps
-
-    def _calc_timestamps(self, time_intervals: list[dict]) -> list[str]:
-        times = []
-        for ti in time_intervals:
-            current_time = ti['start']
-            times.append(ti['start'])
-            hrmin_end = self._calc_hrmin_int(ti['end'])
-            step_mins = ti['step_mins']
-            while True:
-                current_time = self._calc_next_time(current_time, step_mins)
-                if self._calc_hrmin_int(current_time) >= hrmin_end:   # exclusive of end point
-                    break
-                times.append(current_time)
-        return times
-                    
+                   
     def test_date_within_service_time_range(self, date_str: str):
         """ Test if provided date is within the graph service time range. 
 
@@ -571,11 +534,6 @@ class OTP2():
     @staticmethod
     def _set_itineraries_str():
         return "{itineraries {startTime endTime walkDistance generalizedCost legs{mode duration}}}"
-    
-    # @staticmethod
-    # def _calc_hrmin_int(timestr: str):
-    #     hour, minute = [int(x) for x in timestr.split(":")]
-    #     return 60 * hour + minute
 
     @staticmethod
     def _calc_next_time(timestr: str, step: int) -> str:
@@ -585,3 +543,10 @@ class OTP2():
             hr_increment = (minute + step) // 60
             return f"{str(hour + hr_increment).zfill(2)}:{str(minute + step - hr_increment * 60).zfill(2)}"
         return f"{str(hour).zfill(2)}:{str(minute + step).zfill(2)}"
+    
+    @staticmethod
+    def _create_numerical_datetime(date_str, time_str):
+        year, month, day = date_str.split('-')
+        hour, min = time_str.split(':', maxsplit=1)
+        dt = datetime(int(year), int(month), int(day), int(hour), int(min))
+        return dt.timestamp()
