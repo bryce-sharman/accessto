@@ -1,13 +1,14 @@
 from datetime import datetime
+import geopandas as gpd
 import numpy as np
+import pandas as pd
 from pathlib import Path
 import requests
 from shapely import Point
 import subprocess
 from time import sleep
 
-from .enumerations import TRAVELTIME_TOOCLOSE
-from .enumerations import TRAVELTIME_ERROR
+from ..matrix import Matrix
 
 class OTP2():
     """ Class to interface with OpenTripPlanner to calculate run times.
@@ -53,6 +54,8 @@ class OTP2():
         'Content-Type': 'application/json',
         'OTPTimeout': '180000',
     }
+    DEFAULT_WALK_SPEED = 5.0   # km/hr
+    DEFAULT_TIME_INCREMENT = 1
 
     def __init__(self):
         
@@ -70,7 +73,7 @@ class OTP2():
         # Setting this too low will cause problems as the server won't be available when subsequent actions are run.
         self._max_server_sleep_time = 30
 
-
+#region Graph and server
     def build_otp_graph(self, overwrite:bool=False) -> None:
         """ Runs OTP 2 to build OTP graph in the directory.
         
@@ -180,9 +183,51 @@ class OTP2():
         host = requests.get(self._request_host_url)
         if host is None:
             raise RuntimeError("Null values returned from OTP request.")
+#endregion
+        
+#region Walk Trips
 
+    def request_walk_cost_matrix(self, from_gdf, to_gdf, cost_output='trip_duration', walk_speed=None):
+        """ Requests walk-only trip matrix from OTP, returing either duration, trip distance or OTP's generalized cost.
 
-    def request_walk_trip_cost(self, from_pt, to_pt, walk_speed=5.0, test_mode=False):
+            Parameters
+            ----------
+            from_gdf: geopandas.GeoDataFrame
+                Origin points
+            to_gdf: geopandas.GeoDataFrame
+                Destination points
+            cost_output: str, optional
+                One of: 'trip_duration', 'walk_distance', 'generalized_cost'. Defaults to 'trip_duration'
+            walk_speed: float or None
+                Walk speed in kilometres per hour.
+                If None, set this is set to the default walk speed; currently 5 km/hr.
+
+            Returns
+            -------
+            cost_matrix: pd.DataFrame
+                Matrix with costs from from_pts to to_pts. 
+
+            Raises
+            ------
+            requests.ConnectionError
+                Raised if cannot connect to host
+
+        """
+        if cost_output not in ['trip_duration', 'walk_distance', 'gen_cost']:
+            raise ValueError("Invalid `cost_output` parameter")
+        if not isinstance(from_gdf, gpd.GeoDataFrame) or not isinstance(to_gdf, gpd.GeoDataFrame):
+            raise AttributeError("`from_gdf` and `to_gdf` parameters must be geopandas GeoDataFrames")
+            
+        cost_matrix_df = pd.DataFrame(index=from_gdf.index, columns=to_gdf.index, data=0.0)
+        for from_index, from_row in from_gdf.iterrows():
+            from_pt = from_row['geometry']
+            for to_index, to_row in to_gdf.iterrows():
+                to_pt = to_row['geometry']
+                r = self.request_walk_trip_cost(from_pt, to_pt, walk_speed, test_mode=False)
+                cost_matrix_df.at[from_index, to_index] = r[cost_output]
+        return Matrix(df=cost_matrix_df, name="walk_travel_cost")
+
+    def request_walk_trip_cost(self, from_pt, to_pt, walk_speed=None, test_mode=False):
         """ Requests a walk-only trip from OTP, returing walk time and distance.
 
             Parameters
@@ -191,16 +236,16 @@ class OTP2():
                 Point containing x,y location of trip start
             to_pt: list of float
                 Point containing x,y location of trip end
-            walk_speed: float
-                Walk speed in kilometres per hour
+            walk_speed: float or None
+                Walk speed in kilometres per hour.
+                If None, set this is set to the default walk speed; currently 5 km/hr.
                 
             Returns
             -------
             results: dict
-                walk_time: float
+                trip_duration: float
                     Walk time in minutes
                 walk_distance: float
-                    Walk distance in metres
                 generalized_cost: float
                     Internal generalized cost
 
@@ -220,6 +265,8 @@ class OTP2():
             For a walk trip in OTP, we do not need to specify a date and time. 
 
         """
+        if walk_speed is None:
+            walk_speed = self.DEFAULT_WALK_SPEED
         from_str = self._set_pt_str("from", from_pt)
         to_str = self._set_pt_str("to", to_pt)
         modes_str = self._set_modes_str(["WALK"])
@@ -244,22 +291,143 @@ class OTP2():
 
         if not test_mode:
             # Default mode, returns trip duration and walk distance
-            return {"trip_duration": (itineraries[0]['endTime'] - itineraries[0]['startTime']) / 60.0, 
+            return {"trip_duration": (itineraries[0]['endTime'] - itineraries[0]['startTime']) / 1000 / 60.0, 
                     "walk_distance": itineraries[0]['walkDistance'],
                     "generalized_cost": itineraries[0]['generalizedCost']}
         else:
             # In test mode, return full itinerary for additional testing
             return itineraries
+#endregion
         
+#region bikes
 
     def request_bike_trip_cost(self, from_pt, to_pt, bike_speed=18.0, test_mode=False):
         """ Requests a bike-only trip from OTP, returing walk time and distance. """
 
         # todo: need to explore more for bike trips, including possible changes to the router-config file
         raise NotImplementedError("Further testing is required for this library to support bike travel. ")
+#endregion
+    
+#region transit
+    def request_transit_cost_matrix(self, from_gdf, to_gdf, date_str, start_time_str, duration, time_increment=None, walk_speed=None):
+        """ Requests walk/transit trip matrix from OTP, returing either trip duration in minutes.
 
-    def request_transit_trip_cost(self, from_pt, to_pt, date_str, time_str, arrive_by, walk_speed=5.0, 
-                                    skip_test_trip_date=False, test_mode=False, num_itineraries=5):
+            Parameters
+            ----------
+            from_gdf: geopandas.GeoDataFrame
+                Origin points
+            to_gdf: geopandas.GeoDataFrame
+                Destination points
+            date_str: str
+                Trip date in format YYYY-MM-DD
+            start_time_str: str
+                Time interval start in format hh:mm
+            duration: int
+                Duration of time interval in minues.
+            time_increment: int or None, optional
+                Increment between different trip runs in minutes.
+                If None, set this is set to the default interval; currently 1 minute.
+            walk_speed: float or None
+                Walk speed in kilometres per hour.
+                If None, set this is set to the default walk speed; currently 5 km/hr.
+                
+            Returns
+            -------
+            cost_matrix: Matrix
+                Matrix with costs from from_pts to to_pts. 
+
+            Raises
+            ------
+            requests.ConnectionError
+                Raised if cannot connect to host
+
+            Notes
+            -----
+            For transit, returning trip duration appears to be the only useful measure. The generalized cost
+            does not appear to include waiting for the first bus.
+
+        """
+        self.test_date_within_service_time_range(date_str)
+        if not isinstance(from_gdf, gpd.GeoDataFrame) or not isinstance(to_gdf, gpd.GeoDataFrame):
+            raise AttributeError("`from_gdf` and `to_gdf` parameters must be geopandas GeoDataFrames")
+            
+        cost_matrix_df = pd.DataFrame(index=from_gdf.index, columns=to_gdf.index, data=0.0)
+        for from_index, from_row in from_gdf.iterrows():
+            from_pt = from_row['geometry']
+            for to_index, to_row in to_gdf.iterrows():
+                to_pt = to_row['geometry']
+                r = self.request_avg_transit_trip_cost(
+                    from_pt, to_pt, date_str, start_time_str, duration, time_increment, walk_speed, skip_test_trip_date=True)
+                cost_matrix_df.at[from_index, to_index] = r['trip_duration']
+        return Matrix(df=cost_matrix_df, name="transit_travel_cost")
+
+
+    def request_avg_transit_trip_cost(
+            self, from_pt, to_pt, date_str, start_time_str, duration, time_increment=None, walk_speed=None, skip_test_trip_date=False):
+        """ Requests average transit/walk trip costs from OTP over a time interval, inclusive at intervanl start, exclusive at interval end.
+
+            Parameters
+            ----------
+            from_pt: shapely.Point
+                Point containing x,y location of trip start
+            to_pt: list of float
+                Point containing x,y location of trip end
+            date_str: str
+                Trip date in format YYYY-MM-DD
+            start_time_str: str
+                Time interval start in format hh:mm
+            duration: int
+                Duration of time interval in minues.
+            time_increment: int or None, optional
+                Increment between different trip runs in minutes.
+                If None, set this is set to the default interval; currently 1 minute.
+            walk_speed: float or None
+                Walk speed in kilometres per hour.
+                If None, set this is set to the default walk speed; currently 5 km/hr.
+
+
+            Returns
+            -------
+            Average of results return from `request_transit_trip_cost` method over the time interval.
+        
+            
+            Other Parameters
+            ----------------
+            skip_test_trip_date: bool, optional
+                if true, then do not test the trip start time. This is meant as an efficiency parameter when requesting
+                multiple trip costs, such as when calculating a travel time matrix.
+
+        """
+        if not skip_test_trip_date:
+            self.test_date_within_service_time_range(date_str)
+        if not time_increment:
+            time_increment = self.DEFAULT_TIME_INCREMENT
+
+        trip_time_str = start_time_str
+        elapsed_time = 0
+        n_runs = 0
+        sum_dict = {
+                "trip_duration": 0.0, 
+                "walk_distance": 0.0, 
+                "generalized_cost": 0.0
+        }
+        while True:
+            cost_dict = self.request_transit_trip_cost(
+                from_pt, to_pt, date_str, trip_time_str, arrive_by=False, walk_speed=walk_speed, 
+                skip_test_trip_date=True, test_mode=False)
+            for k, v in cost_dict.items():
+                sum_dict[k] += v
+            n_runs += 1
+            trip_time_str = self._calc_next_time(trip_time_str, time_increment)
+            elapsed_time += time_increment
+            if elapsed_time >= duration:  # Exclusive at trip end
+                break
+        for k, v in sum_dict.items():
+            sum_dict[k] = v / n_runs
+        return sum_dict
+    
+    def request_transit_trip_cost(self, from_pt, to_pt, date_str, time_str, arrive_by=False, walk_speed=None, 
+                                    skip_test_trip_date=False, test_mode=False):
         """ Requests a transit/walk trip from OTP, returing total time and walk distance.
 
             Parameters
@@ -268,15 +436,16 @@ class OTP2():
                 Point containing x,y location of trip start
             to_pt: list of float
                 Point containing x,y location of trip end
-            walk_speed: float
-                Walk speed in kilometres per hour
             date_str: str
                 Trip date in format YYYY-MM-DD
             time_str: str
                 Trip time in format hh:mm
-            arrive_by: bool
-                Flag if trip time reflects latest arrival time (if True) or departure time (if False)
-                
+            arrive_by: bool, optional
+                Flag if trip time reflects latest arrival time (if True) or departure time (if False).
+                Defaults to False
+            walk_speed: float or None
+                Walk speed in kilometres per hour.
+                If None, set this is set to the default walk speed; currently 5 km/hr.
 
             Returns
             -------
@@ -305,11 +474,9 @@ class OTP2():
                 if True, returns request itineraries instead of usual return dictionary. 
                 This is intended only to be run from test scripts. 
 
-            num_itineraries: int, optional
-                Sets the maximum number of itineraries returned. Default is 5.
-
-
         """
+        if walk_speed is None:
+            walk_speed = self.DEFAULT_WALK_SPEED
         if not skip_test_trip_date:
             self.test_date_within_service_time_range(date_str)
 
@@ -362,53 +529,6 @@ class OTP2():
             # In test mode, return full itinerary for additional testing
             return itineraries
 
-    def request_avg_transit_trip_cost(
-            self, start_time_str, time_dur, time_increment=1, **kwargs):
-        """ Requests average transit/walk trip costs from OTP over a time interval, inclusive at intervanl start, exclusive at interval end.
-
-            Parameters
-            ----------
-            start_time_str: str
-                Time interval start in format hh:mm
-            duration: int
-                Duration of time interval in minues.
-            time_increment: int, optional
-                Increment between different trip runs in minutes. Defaults to 1 minute.
-            **kwargs:
-                Transit trip cost parameters to be used by `request_transit_trip_cost` method.
-                The time_str argument will be overwritten.
-
-            Returns
-            -------
-            Average of results return from `request_transit_trip_cost` method over the time interval.
-        
-        """
-        # Make sure that no time_str argument is included in the kwargs, this needs to be overwritten.
-        if 'time_str' in kwargs.keys():
-            del kwargs['time_str']
-
-        trip_time_str = start_time_str
-        elapsed_time = 0
-        n_runs = 0
-        sum_dict = {
-                "trip_duration": 0.0, 
-                "walk_distance": 0.0, 
-                "generalized_cost": 0.0
-        }
-        while True:
-            cost_dict = self.request_transit_trip_cost(time_str=trip_time_str, **kwargs)
-            sum_dict["trip_duration"] += cost_dict["trip_duration"]
-            sum_dict["walk_distance"] += cost_dict["walk_distance"]
-            sum_dict["generalized_cost"] += cost_dict["generalized_cost"]
-            n_runs += 1
-            trip_time_str = self._calc_next_time(trip_time_str, time_increment)
-            elapsed_time += time_increment
-            if elapsed_time >= time_dur:  # Exclusive at trip end
-                break
-        for k, v in sum_dict.items():
-            sum_dict[k] = v / n_runs
-        return sum_dict
-
                    
     def test_date_within_service_time_range(self, date_str: str):
         """ Test if provided date is within the graph service time range. 
@@ -444,9 +564,9 @@ class OTP2():
         if not start_posix <= test_posix <= end_posix:
             start_end_dates = np.array([start_posix, end_posix], dtype='datetime64[s]')
             raise RuntimeError(f"Trip date {date_str} is not within graph start/end dates: {start_end_dates}")
+#endregion
 
-    #region property methods
-        
+#region property methods
     @property
     def java_path(self):
         return self._java_path
@@ -509,8 +629,9 @@ class OTP2():
             raise ValueError("max_server_sleep_time must be a number >= 0.")
         self._max_server_sleep_time = new_sleep_time
 
-    #endregion
-        
+#endregion
+
+#region Hidden methods   
     def _test_paths(self):
         if self._java_path is None:
             raise FileNotFoundError(self.JAVA_PATH_ERROR)
@@ -550,3 +671,4 @@ class OTP2():
         hour, min = time_str.split(':', maxsplit=1)
         dt = datetime(int(year), int(month), int(day), int(hour), int(min))
         return dt.timestamp()
+#endregion
