@@ -51,6 +51,7 @@ In the Miniconda3 prompt, type:
 (r5py) [local directory]> conda install --channel conda-forge jupyterlab
 ```
 
+
 ### Install **accessto** to this environment
 
 Download the code from this release and store in a convenient location.
@@ -87,7 +88,26 @@ https://learn.microsoft.com/en-us/java/openjdk/download#openjdk-17
 
 
 
-## Running accessto
+### 7. Download `r5`` JAR file and setup the `r5py`` config file
+
+On City of Toronto computers, we've found that it's best to run using a local copy of the r5 .jar file. 
+
+Download the `r5` JAR file, which is the package that performs the travel time computations. This is available on *r5's* GitHub page: https://github.com/conveyal/r5/releases.
+As of the time of writing, the latest version is version 7.1, *r5-v7.1-all.jar*.  Download this and store in a local directory.
+
+You will then need to setup the r5py config file, which among other things will point r5py to this file. On a windows machine *r5py* looks for this file in the %APPDATA% directory. You can find this by typing 
+`%APPDATA%` in the URL of an explorer window. Create a file called `r5py.yml` in this directiory. The snippet below shows  the contents of this file on the testing computer.
+
+```yaml
+--max-memory=8G
+--r5-classpath=C:\MyPrograms\r5\r5-v7.1-r5py-all.jar
+--verbose=True
+```
+
+More information on r5py config files can be found on their documentation:
+https://r5py.readthedocs.io/en/stable/user-guide/user-manual/configuration.html#configuration-via-config-files
+
+### 8. Running accessto
 
 *accessto* is designed to be run from a Jupyter notebook. To open the notebook, perform the following steps:
 

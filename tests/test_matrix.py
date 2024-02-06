@@ -1,111 +1,111 @@
 from importlib.resources import files
+from os import environ
+import numpy as np
 import pandas as pd
-from pandas import testing as tm
+import pandas.testing as tm
+from pathlib import Path
 import unittest
 
 import accessto
-from accessto.matrix import Matrix, read_csv 
+from accessto.matrix import read_matrix, write_matrix
 
 
-class TestMatrix(unittest.TestCase):
-    pass
+class TestMatrixHelperFunctions(unittest.TestCase):
 
     def setUp(self):
-
         # Find the path to to the test-directions
         # The src path is to the src/accessto directory. 
         src_path = files(accessto)
         root_path = src_path.parents[1]
         self.testdata_path = root_path / "tests" / "test_data" / "matrix"
 
-        self.ref_matrix = Matrix(
-            origins=[12, 29, 34],
-            destinations=[56, 59, 62],
-            data=[[11.1, 22.2, 33.3], [44.4, 55.5, 66.6], [77.7, 88.8, 99.9]],
-            name="test_matrix"
-        )
-
-    @staticmethod
-    def _test_matrix(test_matrix, ref_matrix, check_name=False):
-        """ Test matrix helping function that checks two matrices. Raises Assertion error if test fails."""
-        tm.assert_frame_equal(
-                left=test_matrix.matrix, 
-                right=ref_matrix.matrix,
-                check_dtype=False,
-                check_names=False,
-                check_exact=False,
-                check_index_type="equiv"
-        )
-        if check_name:
-            if test_matrix.name != ref_matrix.name:
-                raise AssertionError(f"Names do not match: {test_matrix.name}, {ref_matrix.name}")
-
-#region read_csv tests   
-    def test_read_tall_full(self):
+    def test_read_matrix(self):
         """ Tests file read of a simple matrix in tall (stacked) format. """
-        read_mat = read_csv(self.testdata_path / 'small_matrix_tall.csv', name="read_matrix")
-        ref_mat = Matrix(
-            origins=[1, 2], destinations=[4, 5, 6], data=[[10., 15., 20.], [5., 8., 12.]], name="ref_matrix"
+        read_mat = read_matrix(self.testdata_path / 'small_matrix.csv')
+        ref_mat = pd.DataFrame(
+            columns=['from_id', 'to_id', 'travel_time'],
+            data=[
+                [1,100,1000.1],
+                [1,101,1001.1],
+                [1,102,1002.1],
+                [2,100,2000.1],
+                [2,101,2001.1],
+                [2,102,2002.1],
+                [3,100,3000.1],
+                [3,101,3001.1],
+                [3,102,3002.1]
+            ]
         )
         self._test_matrix(read_mat, ref_mat)
+        self.assertTrue(read_mat.name=="matrix")
 
-    def test_read_tall_blanks_1(self):
-        """ Tests file read of a simple matrix in tall (stacked) format with blanks, default fill value. """
-        fill_value = 999.99
-        read_mat = read_csv(self.testdata_path / 'small_matrix_tall_blanks.csv', name="read_matrix")
-        ref_mat = Matrix(
-            origins=[1, 2], destinations=[4, 5, 6], data=[[10., 15., 20.], [fill_value, fill_value, 12.]], name="ref_matrix"
+    def test_read_matrix_named(self):
+        """ Tests file read of a simple matrix in tall (stacked) format. """
+        my_name = "new_name"
+        read_mat = read_matrix(self.testdata_path / 'small_matrix.csv', my_name)
+        ref_mat = pd.DataFrame(
+            columns=['from_id', 'to_id', 'travel_time'],
+            data=[
+                [1,100,1000.1],
+                [1,101,1001.1],
+                [1,102,1002.1],
+                [2,100,2000.1],
+                [2,101,2001.1],
+                [2,102,2002.1],
+                [3,100,3000.1],
+                [3,101,3001.1],
+                [3,102,3002.1]
+            ]
         )
         self._test_matrix(read_mat, ref_mat)
+        self.assertTrue(read_mat.name==my_name)
 
-    def test_read_tall_blanks_2(self):
-        """ Tests file read of a simple matrix in tall (stacked) format with blanks, specified fill value. """
-        fill_value = 222.22
-        read_mat = read_csv(self.testdata_path / 'small_matrix_tall_blanks.csv', name="read_matrix", fill_value=fill_value)
-        ref_mat = Matrix(
-            origins=[1, 2], destinations=[4, 5, 6], data=[[10., 15., 20.], [fill_value, fill_value, 12.]], name="ref_matrix"
+    def test_write_read_roundtrip_intids(self):
+        df = pd.DataFrame(
+            columns=['from_id', 'to_id', 'travel_time'],
+            data=[
+                    [1, 100, 1000.1],
+                    [1, 101, 1001.1],
+                    [1, 102, 1002.1],
+                    [2, 100, 2000.1],
+                    [2, 101, 2001.1],
+                    [2, 102, 2002.1],
+                    [3, 100, 3000.1],
+                    [3, 101, 3001.1],
+                    [3, 102, 3002.1]
+                ]
         )
-        self._test_matrix(read_mat, ref_mat)
+        # Find the Windows temp directory, clear if it already exists
+        temp_dir = Path(environ['TMP']) / 'OTP2' / 'testing'
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        write_matrix(df, temp_dir / "test_round_trip.csv")
 
-    def test_read_wide(self):
-        """ Tests file read of simple matrix in wide format."""
-        read_mat = read_csv(self.testdata_path / 'small_matrix_wide.csv', name="read_matrix")
-        ref_mat = Matrix(
-            origins=[5, 6, 7], destinations=[10, 11], data=[[21.5, 31.7], [41.5, 51.7], [61.5, 71.7]]
+        df2 = read_matrix(temp_dir / "test_round_trip.csv")
+        self._test_matrix(df2, df)
+
+    def test_write_read_roundtrip_strids(self):
+        df = pd.DataFrame(
+            columns=['from_id', 'to_id', 'travel_time'],
+            data=[
+                    ['a', 'aaa', 1000.1],
+                    ['a', 'bbb', 1001.1],
+                    ['a', 'ccc', 1002.1],
+                    ['b', 'aaa', 2000.1],
+                    ['b', 'bbb', 2001.1],
+                    ['b', 'ccc', 2002.1],
+                    ['c', 'aaa', 3000.1],
+                    ['c', 'bbb', 3001.1],
+                    ['c', 'ccc', 3002.1]
+                ]
         )
-        self._test_matrix(read_mat, ref_mat)
+        # Find the Windows temp directory, clear if it already exists
+        temp_dir = Path(environ['TMP']) / 'OTP2' / 'testing'
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        write_matrix(df, temp_dir / "test_round_trip2.csv")
 
-    @unittest.SkipTest
-    def test_file_write_read_round_trip(self):
-        pass
-#endregion
-    
-#region class Matrix tests
-        
-    def test_creation_from_matrix(self):
-        new_matrix = Matrix(self.ref_matrix)
-        self._test_matrix(new_matrix, self.ref_matrix, check_name=True)
+        df2 = read_matrix(temp_dir / "test_round_trip2.csv")
+        self._test_matrix(df2, df)
 
-    def test_creation_from_df(self):
-        new_matrix = Matrix(df=self.ref_matrix.matrix, name="test_matrix")
-        self._test_matrix(new_matrix, self.ref_matrix, check_name=True)
-
-    def test_creation_from_data(self):
-        new_matrix = Matrix(
-            origins=self.ref_matrix.matrix.index,
-            destinations=self.ref_matrix.matrix.columns,
-            data = self.ref_matrix.matrix.values, 
-            name=self.ref_matrix.name
-        )
-        self._test_matrix(new_matrix, self.ref_matrix, check_name=True)
-
-    def test_creation_from_data_negative_entries(self):
-        with self.assertRaises(ValueError):
-            ref_matrix = Matrix(
-                origins=[12, 29, 34],
-                destinations=[56, 59, 62],
-                data=[[11.1, 22.2, -33.3], [44.4, 55.5, 66.6], [77.7, 88.8, 99.9]],
-                name="test_matrix"
-            )
-
-    # todo: we can add some tests about matrix writing, later
+    def _test_matrix(self, matrix, ref_matrix, rtol=1.0e-5, atol=1.0e-8):
+        """ Test matrix helping function that checks two matrices. Raises Assertion error if test fails."""
+        tm.assert_frame_equal(matrix, ref_matrix, rtol=rtol, atol=atol)
