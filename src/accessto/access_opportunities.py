@@ -273,7 +273,7 @@ def closest_opportunity(df):
     """
     cost_matrix = process_cost_matrix(df)
     cm = cost_matrix.to_numpy()
-    return pd.Series(data=np.min(cm, axis=1), index=cost_matrix.index, dtype=np.int32)
+    return pd.Series(data=np.min(cm, axis=1, initial=10000.0, where=np.isfinite(cm)), index=cost_matrix.index)
 
 def nth_closest_opportunity(df, n):
     """ Calculates cost to the nth closest opportunity from each origin.
@@ -300,6 +300,6 @@ def nth_closest_opportunity(df, n):
         raise ValueError('Parameter `n` should be an integer >= 2.')
     cost_matrix = process_cost_matrix(df)
     cm = cost_matrix.to_numpy()
-    return pd.Series(data=np.partition(cm, kth=n-1, axis=1)[:, n-1], index=cost_matrix.index, dtype=np.int32)
+    return pd.Series(data=np.partition(cm, kth=n-1, axis=1)[:, n-1], index=cost_matrix.index)
 
 # #endregion

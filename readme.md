@@ -38,6 +38,15 @@ conda create \
 > **_NOTE:_** Note for City of Toronto users, that this will not work when using City desktop computers or when connected to the VM. To run on a City computer I would install on a laptop not on the VM, and then copy the Python environment to the desktop computer. Note that miniconda must be installed to the same location on both computers for this to work.
 
 
+Note that at one point I had an issue reading/writing shapefiles using this package. Hence I created an environment and install `fiona` and `pyorgio` before r5py. This workaround appears to resolve this issue.
+
+```console
+conda create --name r5py python=3.11
+conda activate r5py
+conda install --channel conda-forge fiona pyogrio jupyterlab
+conda install --channel conda-forge r5py
+```
+
 ### 4. Activate the r5py environment
 
 In the Miniconda3 prompt, type:
@@ -50,7 +59,6 @@ In the Miniconda3 prompt, type:
 ```console
 (r5py) [local directory]> conda install --channel conda-forge jupyterlab
 ```
-
 
 ### Install **accessto** to this environment
 
