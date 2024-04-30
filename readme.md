@@ -62,11 +62,12 @@ To update this package, replace the previous command with the following:
 
 ### 5. Download OpenTripPlanner JAR file
 
-*OpenTripPlanner* is distributed as a single stand-alone runnable JAR file. OTP v2.5.0 can be downloaded from their GitHub repository.
+*OpenTripPlanner* is distributed as a single stand-alone runnable JAR file. OTP v2.4.0 can be downloaded from their GitHub repository.
 https://github.com/opentripplanner/OpenTripPlanner/releases
 
-Download the 'shaded jar' file, *e.g.* **otp-2.5.0-shaded.jar**.
+Download the 'shaded jar' file, *e.g.* **otp-2.4.0-shaded.jar**.
 
+**_NOTE:_** OTP v2.5.0 is now available, however this version requires Java 21. Testing for `accessto` has only been completed using OTP v2.4.0. 
 
 ### 6. Install Java
 
