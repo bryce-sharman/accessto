@@ -228,8 +228,8 @@ def calc_access_to_opportunities(df, impedance_function, destination_weights=Non
 #endregion
     
 #region Dual access measures
-def has_opportunity(df, threshold):
-    """ Calculates whether any opportunities are within input threshold for each origin. 
+def has_opportunity(df: pd.DataFrame, threshold: int | float, reverse_direction: bool=False):
+    """ Calculates whether any opportunities are within threshold cost. 
 
     Parameters
     ---------
@@ -239,22 +239,29 @@ def has_opportunity(df, threshold):
         The index is not used.
     threshold: float or int
         threshold to test, should be real number > 0
+    reverse_direction: bool
+        If False, tests whether any destination is within threshold cost of origin, this is the default.
+        If True, reverses test to if any origin is within threshold distance of destination.
 
     Returns
     -------
     pandas.Series
-        pandas series where the index is the same as that of the cost_matrix
-        Each value is 1 if any opportunity is within threshold of that point, 0 otherwise
-    """
+        1 if any opportunity is within threshold, 0 otherwise
+        If reverse_direction is False then the index is the cost_matrix origins,
+        otherwise the index is the cost_matrix destinations.
 
+     """
     test_within_threshold = calc_impedance_matrix(df, within_threshold, threshold=threshold)
-    return pd.Series(
-        data=np.max(test_within_threshold.to_numpy(), axis=1), 
-        index=test_within_threshold.index, 
-        dtype=np.int32
-    )
     
-def closest_opportunity(df):
+    if not reverse_direction:
+        data = np.max(test_within_threshold.to_numpy(), axis=1)
+        index = test_within_threshold.index
+    else:
+        data = np.max(test_within_threshold.to_numpy(), axis=0)
+        index = test_within_threshold.columns
+    return pd.Series(data=data, index=index, dtype=np.int32)
+    
+def closest_opportunity(df: pd.DataFrame, reverse_direction: bool=False):
     """ Calculates cost to the closest opportunity from each origin.
 
     Parameters
@@ -263,19 +270,29 @@ def closest_opportunity(df):
         Cost matrix in format produced by OTP2TravelTimeComputer and R5PYTravelTimeComputer.
         This format expects the following columns: 'from_id', 'to_id', 'travel_time'.
         The index is not used.
+    reverse_direction: bool
+        If False, calculates closest opportunity from each origin, this is the default.
+        If True, reverses test to calculate closest opportunity to destination.
 
     Returns
     -------
     pandas.Series
-        pandas series where the index is the same as that of the cost_matrix
-        Each value is the cost to the closest destination from this origin
+        Closest opportunity from each origin (if reverse_direction flag is False),
+        or to each destination (if reverse_direction flag is True).
 
     """
     cost_matrix = process_cost_matrix(df)
     cm = cost_matrix.to_numpy()
-    return pd.Series(data=np.min(cm, axis=1, initial=10000.0, where=np.isfinite(cm)), index=cost_matrix.index)
 
-def nth_closest_opportunity(df, n):
+    if not reverse_direction:
+        data = np.min(cm, axis=1, initial=10000.0, where=np.isfinite(cm))
+        index = cost_matrix.index
+    else:
+        data = np.min(cm, axis=0, initial=10000.0, where=np.isfinite(cm))
+        index = cost_matrix.columns
+    return pd.Series(data=data, index=index)
+
+def nth_closest_opportunity(df, n, reverse_direction: bool=False):
     """ Calculates cost to the nth closest opportunity from each origin.
 
     Parameters
@@ -286,6 +303,9 @@ def nth_closest_opportunity(df, n):
         The index is not used.
     n: int
         Nth-opportunity to which to calculate cost. Expecting an integer >= 2.
+    reverse_direction: bool
+        If False, calculates nth-closest opportunity from each origin, this is the default.
+        If True, reverses test to calculate nth-closest opportunity to destination.
 
     Returns
     -------
@@ -300,6 +320,12 @@ def nth_closest_opportunity(df, n):
         raise ValueError('Parameter `n` should be an integer >= 2.')
     cost_matrix = process_cost_matrix(df)
     cm = cost_matrix.to_numpy()
-    return pd.Series(data=np.partition(cm, kth=n-1, axis=1)[:, n-1], index=cost_matrix.index)
+    if not reverse_direction:
+        data = np.sort(cm, axis=1)[:, n-1]
+        index=cost_matrix.index
+    else:
+        data = np.sort(cm, axis=0)[n-1, :]
+        index=cost_matrix.columns
+    return pd.Series(data=data, index=index)
 
 # #endregion
