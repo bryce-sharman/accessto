@@ -206,13 +206,15 @@ def calc_access_to_opportunities(df, impedance_function, destination_weights=Non
             index=impedance_matrix.index, data=impedance_matrix.sum(axis=1))
     else:
         if not destination_weights.index.equals(impedance_matrix.columns):
-            raise RuntimeError('If defined, `destination_weights` index must match `cost_matrix` columns.')
+            RuntimeWarning("Reindexing destination weights vector to match cost matrix columns.")
+            destination_weights = destination_weights.reindex(impedance_matrix.columns)
         destination_access = pd.Series(
                 index=impedance_matrix.index, data=destination_weights.dot(impedance_matrix.transpose()))
 
     if origin_weights is not None:
         if not origin_weights.index.equals(impedance_matrix.index):
-            raise RuntimeError('If defined, `origin_weights` index must match `cost_matrix` index.')
+            origin_weights = origin_weights.reindex(impedance_matrix.index)
+            RuntimeWarning('Reindex origin weights vector to mach cost_matrix` index.')
         return destination_access.dot(origin_weights)
     else:
         # Apply normalization
