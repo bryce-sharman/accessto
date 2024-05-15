@@ -206,6 +206,24 @@ class TestAccessOpportunities(unittest.TestCase):
         )
         tm.assert_series_equal(result, ref_series, check_names=False, check_index_type=False)
 
+    def test_primal_gaussian_dest_weights_reindex_needed(self):
+        """ Test the access to opportunities with destination weights, when indices don't match and reindex is needed. """
+        # Note that this destination_weights vector intentionally has the wrong final index, which is 25 and not 22.
+        destination_weights = pd.Series(data=[1, 3, 5], index=[20, 21, 25], dtype=np.float64)
+
+        ref_series = pd.Series(
+            index=[1, 2], 
+            data=[
+                0.88249690 + 3*0.60653066, 
+                0.19789870 + 3*0.42955736],
+            dtype=np.float64
+        )
+        result = calc_access_to_opportunities(
+             self.cost_matrix_df, gaussian, destination_weights=destination_weights, origin_weights=None, 
+             normalize="none", sigma=10
+        )
+        tm.assert_series_equal(result, ref_series, check_names=False, check_index_type=False)
+
 
     def test_primal_gaussian_orig_weights(self):
         """ Test the access to opportunities with origin weights. """
@@ -216,6 +234,18 @@ class TestAccessOpportunities(unittest.TestCase):
              normalize="none", sigma=10
         )
         self.assertAlmostEqual(result, ref_result, places=5)
+
+    def test_primal_gaussian_orig_weights_reindex_needed(self):
+        """ Test the access to opportunities with origin weights, when origin indices don't match and reindex is needed.. """
+        # Note that this origin_weights vector intentionally has the wrong first index, which is 0 and not 1.
+        origin_weights = pd.Series(index=[0, 2], data=[12, 15], dtype=np.float64)
+        ref_result = (0.19789870 + 0.42955736 + 0.72614904) * 15
+        result = calc_access_to_opportunities(
+             self.cost_matrix_df, gaussian, destination_weights=None, origin_weights=origin_weights, 
+             normalize="none", sigma=10
+        )
+        self.assertAlmostEqual(result, ref_result, places=5)
+
 
     def test_primal_gaussian_both_weights(self):
         """ Test the access to opportunities with both origin and destination weights. """
