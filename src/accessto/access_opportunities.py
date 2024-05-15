@@ -326,10 +326,6 @@ def nth_closest_opportunity(df, n, reverse_direction: bool=False):
     else:
         data = np.sort(cm, axis=0)[n-1, :]
         index=cost_matrix.columns
-        print()
-        print("HERE")
-        print(data)
-        print(index)
     return pd.Series(data=data, index=index)
 
 # #endregion
