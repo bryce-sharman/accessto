@@ -28,21 +28,29 @@ From the Windows Start Menu, open *Anaconda Prompt (Miniconda3)
 
 Create a conda environment that will hold `rypy` and its dependencies. 
 
-We had found an issue reading/writing shapefiles using the `pyorgio` package when we installed `r5py` directly using the instructions provided in the [r5py installation guide](https://r5py.readthedocs.io/en/stable/user-guide/installation/installation.html#install-using-mamba-conda). This affected pre and post-processing tasks, such as reading OSM networks. We found that installing the `fiona` and `pyorgio` packages before r5py appears to resolve this issue. We'd recommend also installing `jupyterlab`.
+We had found an issue reading/writing shapefiles using the `pyorgio` package when we installed `r5py` directly using the instructions provided in the [r5py installation guide](https://r5py.readthedocs.io/en/stable/user-guide/installation/installation.html#install-using-mamba-conda). This affected pre and post-processing tasks, such as reading OSM networks. We found that installing the `fiona` and `pyorgio` packages before `r5py` appears to resolve this issue, however it may still be necessary to install `fiona` and `pyorgio` using a different method (see below). We'd recommend also installing `jupyterlab`. 
 
   **_NOTE:_** No additional requirements are needed if using OpenTripPlanner to calculate travel times.
 
+
+During testing, we found it was important to specify the version of `r5py` that was being installed, having success using version 0.1.1. 
 
 ```console
 > conda create --name r5py python=3.11
 > conda activate r5py
 (r5py) [local directory]> conda install --channel conda-forge fiona pyogrio
-(r5py) [local directory]> conda install --channel conda-forge r5py
+(r5py) [local directory]> conda install --channel conda-forge r5py=0.1.1
 (r5py) [local directory]> conda install --channel conda-forge jupyterlab
 ```
 
 > **_NOTE:_** Note for City of Toronto users, that this will not work when using City desktop computers or when connected to the VPN. To run on a City computer I would install on a laptop not on the VPN, and then copy the Python environment to the desktop computer. Note that miniconda must be installed to the same location on both computers for this to work.
 
+If following testing there are errors running `accessto`, it may be necessary to install `fiona` and `pyorgio` using different a different method. This can be done using the following:
+
+```console
+> conda activate r5py
+(r5py) [local directory]> pip install fiona pyorgio
+```
 
 ### 4. Install **accessto** to this environment
 
@@ -88,7 +96,7 @@ On City of Toronto computers, we've found that it's best to run using a local co
 Download the `r5` JAR file, which is the package that performs the travel time computations. This is available on *r5's* GitHub page: https://github.com/conveyal/r5/releases.
 As of the time of writing, the latest version is version 7.2, *r5-v7.2-all.jar*.  Download this and store in a local directory.
 
-You will then need to setup the r5py config file, which among other things will point r5py to this file. On a windows machine *r5py* looks for this file in the %APPDATA% \Roaming directory. You can find this by typing 
+You will then need to setup the r5py config file, which among other things will point r5py to this file. On a windows machine *r5py* looks for this file in the `%APPDATA% \Roaming` directory. You can find this by typing 
 `%APPDATA%` in the URL of an explorer window. Create a text file called `r5py.yml` in this directiory. The snippet below shows  the contents of this file on the testing computer.
 
 ```yaml
@@ -115,6 +123,12 @@ https://r5py.readthedocs.io/en/stable/user-guide/user-manual/configuration.html#
         (r5py) [local directory]> cd [notebook location] 
         (r5py) [notebook location]> jupyter lab
         ```
+
+**_NOTE:_** It may be necessary to specify the home location of Java. To find this path type `%APPDATA%` in the URL of an explorer window, navigate to `\AppData\Local\miniconda3\envs\r5py\Library\lib\jvm`. Copy this folder path, and add to the following code prior to running `accessto`:
+
+```console
+(r5py) [local directory]> import os
+(r5py) [local directory]> os.evniron["JAVA_HOME"] = r"[path from above]"
 
 Several example scripts are included in the `example_notebooks` folder of this library package to help you get started.
 
