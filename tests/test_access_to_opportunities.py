@@ -113,6 +113,16 @@ class TestAccessOpportunities(unittest.TestCase):
         result = has_opportunity(self.cost_matrix_df, 7)
         tm.assert_series_equal(result, ref_series, check_names=False, check_index_type=False)
 
+    def test_dual_has_opportunity_within_threshold_7_reversedir(self):
+        """ Test dual access: has opportunity within threshold cost of 7 minutes, reversing direction. """
+        ref_series = pd.Series(
+            index=[20, 21, 22], 
+            data=[1, 0, 0],
+            dtype=np.int32
+        )
+        result = has_opportunity(self.cost_matrix_df, 7, reverse_direction=True)
+        tm.assert_series_equal(result, ref_series, check_names=False, check_index_type=False)
+
     def test_dual_has_opportunity_within_threshold_10(self):
         """ Test dual access: has opportunity within threshold cost of 10 minutes. """
         ref_series = pd.Series(
@@ -125,13 +135,23 @@ class TestAccessOpportunities(unittest.TestCase):
 
 
     def test_dual_closest_opportunity(self):
-        """ Test dual access: closest opportunity"""
+        """ Test dual access: closest opportunity."""
         ref_series = pd.Series(
             index=[1, 2], 
             data=[5, 8],
             dtype=np.int32
         )
         result = closest_opportunity(self.cost_matrix_df)
+        tm.assert_series_equal(result, ref_series, check_names=False, check_index_type=False)
+
+    def test_dual_closest_opportunity_reversedir(self):
+        """ Test dual access: closest opportunity, reversing direction."""
+        ref_series = pd.Series(
+            index=[20, 21, 22], 
+            data=[5, 10, 8],
+            dtype=np.int32
+        )
+        result = closest_opportunity(self.cost_matrix_df, reverse_direction=True)
         tm.assert_series_equal(result, ref_series, check_names=False, check_index_type=False)
 
     def test_dual_2nd_closest_opportunity(self):
@@ -142,6 +162,16 @@ class TestAccessOpportunities(unittest.TestCase):
             dtype=np.int32
         )
         result = nth_closest_opportunity(self.cost_matrix_df, 2)
+        tm.assert_series_equal(result, ref_series, check_names=False, check_index_type=False)
+
+    def test_dual_2nd_closest_opportunity_revesedir(self):
+        """Test dual access: second closest opportunity, reversing direction."""
+        ref_series = pd.Series(
+            index=[20, 21, 22], 
+            data=[18, 13, 15],
+            dtype=np.int32
+        )
+        result = nth_closest_opportunity(self.cost_matrix_df, 2, reverse_direction=True)
         tm.assert_series_equal(result, ref_series, check_names=False, check_index_type=False)
 
     def test_primal_gaussian_no_weights(self):
